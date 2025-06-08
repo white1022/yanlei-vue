@@ -28,9 +28,9 @@ import Layout from '@/layout'
  */
 
 /**
- * constantRoutes
- * a base page that does not have permission requirements
- * all roles can be accessed
+ * 静态路由
+ * 没有权限要求的基页
+ * 所有角色都可以访问
  */
 export const constantRoutes = [
   {
@@ -80,30 +80,18 @@ export const constantRoutes = [
 ]
 
 /**
- * asyncRoutes
- * the routes that need to be dynamically loaded based on user roles
+ * 异步路由（后期会删除）
+ * 需要根据用户角色动态加载的路由
  */
 export const asyncRoutes = [
   {
     path: '/book',
     component: Layout,
-    redirect: '/book/create',
+    redirect: 'noRedirect',
+    alwaysShow: true,
     name: 'book',
     meta: { title: '图书管理', icon: 'documentation', roles: ['admin', 'editor'] },
     children: [
-      {
-        path: '/book/create',
-        component: () => import('@/views/book/create'),
-        name: 'bookCreate',
-        meta: { title: '上传图书', icon: 'edit', roles: ['admin'] }
-      },
-      {
-        path: '/book/edit/:fileName',
-        component: () => import('@/views/book/edit'),
-        hidden: true,
-        name: 'bookEdit',
-        meta: { title: '编辑图书', icon: 'edit', roles: ['admin'], activeMenu: '/book/list' }
-      },
       {
         path: '/book/list',
         component: () => import('@/views/book/list'),
@@ -112,9 +100,23 @@ export const asyncRoutes = [
       }
     ]
   },
-  // 404 page must be placed at the end !!!
+  // 404页必须放在最后 !!!
   { path: '*', redirect: '/404', hidden: true }
 ]
+
+/**
+ * 组件映射
+ * https://panjiachen.github.io/vue-element-admin-site/zh/guide/essentials/permission.html
+ */
+export function componentMap(file) {
+  if (process.env.NODE_ENV === 'development') {
+    // 同步的方式
+    return require('@/' + file + '.vue').default
+  } else {
+    // 异步的方式
+    return import('@/' + file + '.vue')
+  }
+}
 
 const createRouter = () => new Router({
   // mode: 'history', // require service support

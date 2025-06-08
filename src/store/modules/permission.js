@@ -1,36 +1,24 @@
-import { asyncRoutes, constantRoutes } from '@/router'
+import { constantRoutes, componentMap } from '@/router'
+import Layout from '@/layout'
 
 /**
- * Use meta.role to determine if the current user has permission
- * @param roles
- * @param route
+ * 通过递归将后端返回的菜单和本地的组件映射到一起
+ * @param menus
  */
-function hasPermission(roles, route) {
-  if (route.meta && route.meta.roles) {
-    return roles.some(role => route.meta.roles.includes(role))
-  } else {
-    return true
-  }
-}
-
-/**
- * Filter asynchronous routing tables by recursion
- * @param routes asyncRoutes
- * @param roles
- */
-export function filterAsyncRoutes(routes, roles) {
-  const res = []
-
-  routes.forEach(route => {
-    const tmp = { ...route }
-    if (hasPermission(roles, tmp)) {
-      if (tmp.children) {
-        tmp.children = filterAsyncRoutes(tmp.children, roles)
+export function filterAsyncRoutes(menus) {
+  const res = menus.filter(menu => {
+    if (menu.component) {
+      if (menu.component === 'Layout') { // Layout组件特殊处理
+        menu.component = Layout
+      } else {
+        menu.component = componentMap(menu.component) // 导入组件
       }
-      res.push(tmp)
     }
+    if (menu.children && menu.children.length) {
+      menu.children = filterAsyncRoutes(menu.children)
+    }
+    return true
   })
-
   return res
 }
 
@@ -47,14 +35,10 @@ const mutations = {
 }
 
 const actions = {
-  generateRoutes({ commit }, roles) {
+  // 根据菜单生成可访问路由映射
+  generateRoutes({ commit }, menus) {
     return new Promise(resolve => {
-      let accessedRoutes
-      if (roles.includes('admin')) {
-        accessedRoutes = asyncRoutes || []
-      } else {
-        accessedRoutes = filterAsyncRoutes(asyncRoutes, roles)
-      }
+      const accessedRoutes = filterAsyncRoutes(menus)
       commit('SET_ROUTES', accessedRoutes)
       resolve(accessedRoutes)
     })

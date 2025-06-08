@@ -1,15 +1,15 @@
 import request from '@/utils/request'
 
-export function getRules() {
+export function getPids() {
   return request({
-    url: '/admin/role/rule',
+    url: '/admin/rule/pid',
     method: 'get'
   })
 }
 
 export function list(query) {
   return request({
-    url: '/admin/role/lists',
+    url: '/admin/rule/lists',
     method: 'get',
     params: query
   })
@@ -17,7 +17,7 @@ export function list(query) {
 
 export function add(data) {
   return request({
-    url: '/admin/role/add',
+    url: '/admin/rule/add',
     method: 'post',
     data
   })
@@ -25,7 +25,7 @@ export function add(data) {
 
 export function edit(data) {
   return request({
-    url: '/admin/role/edit',
+    url: '/admin/rule/edit',
     method: 'post',
     data
   })
@@ -33,7 +33,7 @@ export function edit(data) {
 
 export function deletes(data) {
   return request({
-    url: '/admin/role/delete',
+    url: '/admin/rule/delete',
     method: 'post',
     data
   })

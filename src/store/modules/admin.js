@@ -1,4 +1,4 @@
-import { login, getInfo } from '@/api/user'
+import { login, getMenus, getInfo } from '@/api/admin'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import router, { resetRouter } from '@/router'
 
@@ -6,8 +6,7 @@ const state = {
   token: getToken(),
   name: '',
   avatar: '',
-  introduction: '',
-  roles: []
+  introduction: ''
 }
 
 const mutations = {
@@ -22,21 +21,19 @@ const mutations = {
   },
   SET_AVATAR: (state, avatar) => {
     state.avatar = avatar
-  },
-  SET_ROLES: (state, roles) => {
-    state.roles = roles
   }
 }
 
 const actions = {
-  // user login
-  login({ commit }, userInfo) {
-    const { email, password } = userInfo
+  // 登录
+  login({ commit }, adminInfo) {
+    const { email, password } = adminInfo
     return new Promise((resolve, reject) => {
       login({ email: email.trim(), password: password }).then(response => {
         const { data } = response
-        commit('SET_TOKEN', data.token)
-        setToken(data.token)
+        data.token && (data.token = 'Bearer ' + data.token)
+        commit('SET_TOKEN', data.token) // vuex存储token
+        setToken(data.token) // cookie存储token
         resolve()
       }).catch(error => {
         reject(error)
@@ -44,26 +41,20 @@ const actions = {
     })
   },
 
-  // get user info
+  // 获取个人信息
   getInfo({ commit, state }) {
     return new Promise((resolve, reject) => {
       getInfo(state.token).then(response => {
         const { data } = response
 
         if (!data) {
-          reject('Verification failed, please Login again.')
+          reject('获取用户信息失败，请重新登录。')
         }
 
-        const { roles, name, avatar, introduction } = data
+        const { name, avatar, introduction } = data
 
-        // roles must be a non-empty array
-        if (!roles || roles.length <= 0) {
-          reject('getInfo: roles must be a non-null array!')
-        }
-
-        commit('SET_ROLES', roles)
         commit('SET_NAME', name)
-        commit('SET_AVATAR', avatar)
+        commit('SET_AVATAR', process.env.VUE_APP_STORAGE_DOMAIN + avatar)
         commit('SET_INTRODUCTION', introduction)
         resolve(data)
       }).catch(error => {
@@ -72,12 +63,28 @@ const actions = {
     })
   },
 
-  // user logout
+  // 获取权限菜单（由服务端生成的）
+  getMenus({ commit, state }) {
+    return new Promise((resolve, reject) => {
+      getMenus(state.token).then(response => {
+        const { data } = response
+
+        if (!data) {
+          reject('获取权限菜单失败，请重新登录。')
+        }
+
+        resolve(data)
+      }).catch(error => {
+        reject(error)
+      })
+    })
+  },
+
+  // 退出登录
   logout({ commit, state, dispatch }) {
     return new Promise((resolve, reject) => {
       try {
         commit('SET_TOKEN', '')
-        commit('SET_ROLES', [])
         removeToken()
         resetRouter()
 
@@ -92,33 +99,27 @@ const actions = {
     })
   },
 
-  // remove token
+  // 删除token
   resetToken({ commit }) {
     return new Promise(resolve => {
       commit('SET_TOKEN', '')
-      commit('SET_ROLES', [])
       removeToken()
       resolve()
     })
   },
 
-  // dynamically modify permissions
-  async changeRoles({ commit, dispatch }, role) {
-    const token = role + '-token'
-
-    commit('SET_TOKEN', token)
-    setToken(token)
-
-    const { roles } = await dispatch('getInfo')
+  // 动态修改权限
+  async changePermissionRoutes({ commit, dispatch }, role) {
+    const menus = await dispatch('getMenus')
 
     resetRouter()
 
-    // generate accessible routes map based on roles
-    const accessRoutes = await dispatch('permission/generateRoutes', roles, { root: true })
-    // dynamically add accessible routes
+    // 根据菜单生成可访问路由映射
+    const accessRoutes = await dispatch('permission/generateRoutes', menus, { root: true })
+    // 动态添加可访问路由
     router.addRoutes(accessRoutes)
 
-    // reset visited views and cached views
+    // 重置访问过的视图和缓存的视图
     dispatch('tagsView/delAllViews', null, { root: true })
   }
 }
